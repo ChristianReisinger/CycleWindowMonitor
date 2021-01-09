@@ -4,6 +4,8 @@
 
 #include <windows.h>
 
+constexpr int MIN_WINDOW_SIZE = 50;
+
 struct Dimensions {
 	int x, y, width, height;
 
@@ -127,21 +129,50 @@ void cycle_fgwindow_monitor(int steps) {
 		SetWindowPos(hwnd, HWND_TOP,
 				target_monitor_dims.x + target_monitor_dims.width * relative_x,
 				window_dims.y,
-				window_dims.width,
-				window_dims.height,
+				0,
+				0,
 				SWP_NOZORDER | SWP_NOSIZE);
 	}
 }
 
+void adjust_fgwindow(int dx, int dy, int dw, int dh) {
+	// This application must be high DPI aware for this function to work as expected
+
+	const auto hwnd = GetForegroundWindow();
+	const Dimensions window_dims { hwnd };
+
+	UINT SWP_flags = SWP_NOZORDER;
+	if (dx == 0 && dy == 0) SWP_flags |= SWP_NOMOVE;
+	if (dw == 0 && dh == 0) SWP_flags |= SWP_NOSIZE;
+	SetWindowPos(hwnd, HWND_TOP,
+			window_dims.x + dx,
+			window_dims.y + dy,
+			std::max(MIN_WINDOW_SIZE, window_dims.width + dw),
+			std::max(MIN_WINDOW_SIZE, window_dims.height + dh),
+			SWP_flags);
+}
+
+void print_help(const char* argv0) {
+	std::cout << "Usage: " << argv0 << " (<steps> | <dx> <dy> <dw> <dh>)\n";
+}
+
 int main(int argc, char** argv) {
-	if (argc == 2)
-		try {
-			cycle_fgwindow_monitor(std::stoi(argv[1]));
-		} catch (const std::invalid_argument&) {
-			std::cout << "Error: argument must be a number\n";
-		} catch (const std::out_of_range& e) {
-			std::cout << "Error: int out of range\n";
+	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2); // must be used before creating any HWND
+
+	try {
+		switch (argc) {
+			case 2:
+				cycle_fgwindow_monitor(std::stoi(argv[1]));
+				break;
+			case 5:
+				adjust_fgwindow(std::stoi(argv[1]), std::stoi(argv[2]), std::stoi(argv[3]), std::stoi(argv[4]));
+				break;
+			default:
+				print_help(argv[0]);
 		}
-	else
-		std::cout << "Error: requires exactly 1 argument (int)\n";
+	} catch (const std::invalid_argument&) {
+		std::cout << "Error: argument must be an int\n";
+	} catch (const std::out_of_range& e) {
+		std::cout << "Error: int out of range\n";
+	}
 }

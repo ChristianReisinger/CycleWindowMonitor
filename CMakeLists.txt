@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 project(CycleWindowMonitor)
 
-add_compile_options(-Wall -Wextra -pedantic)
+add_compile_options(-Wall -Wextra -pedantic -DWINVER=0x0A00 -D_WIN32_WINNT=0x0A00)
 set(CMAKE_CXX_STANDARD 20)
 
 set(BUILD_SFX "${PLATFORM}/${CMAKE_BUILD_TYPE}")
